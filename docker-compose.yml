@@ -1,0 +1,23 @@
+services:
+  savepoint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: browser-savepoint:local
+    container_name: browser-savepoint
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env.docker
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8787/api/v1/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - savepoint_data:/data
+
+volumes:
+  savepoint_data:

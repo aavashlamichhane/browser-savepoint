@@ -55,6 +55,34 @@ Browser extension to export and import encrypted tab sessions with:
 npm run server:start
 ```
 
+## Run server with Docker Compose
+
+1. Copy the compose env template:
+
+```bash
+cp .env.docker.example .env.docker
+```
+
+2. Start container:
+
+```bash
+docker compose up -d --build
+```
+
+3. Check health:
+
+```bash
+curl http://127.0.0.1:8787/api/v1/health
+```
+
+4. Stop container:
+
+```bash
+docker compose down
+```
+
+The compose setup binds the API to `127.0.0.1:8787` so an existing reverse proxy can forward traffic safely.
+
 Server docs:
 
 - `server/README.md`

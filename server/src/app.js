@@ -8,6 +8,9 @@ const isBase64 = (value) => typeof value === "string" && /^[A-Za-z0-9+/=]+$/.tes
 
 export const createApp = ({ authService, saveRepo, storageState }) => {
   const app = express();
+  if (storageState.trustProxy) {
+    app.set("trust proxy", 1);
+  }
 
   app.use(helmet());
   app.use(cors({ origin: true }));

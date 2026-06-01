@@ -5,6 +5,7 @@ export const config = {
   dataDir: process.env.SAVEPOINT_DATA_DIR
     ? path.resolve(process.env.SAVEPOINT_DATA_DIR)
     : path.resolve(process.cwd(), "server/data"),
+  trustProxy: (process.env.SAVEPOINT_TRUST_PROXY ?? "false") === "true",
   accessTokenTtlSec: Number(process.env.SAVEPOINT_ACCESS_TTL_SEC ?? 900),
   refreshTokenTtlSec: Number(process.env.SAVEPOINT_REFRESH_TTL_SEC ?? 60 * 60 * 24 * 30),
   trustedRecoverySecret: process.env.SAVEPOINT_TRUSTED_RECOVERY_SECRET ?? "",

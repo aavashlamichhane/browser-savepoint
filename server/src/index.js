@@ -14,7 +14,7 @@ const bootstrap = async () => {
   const app = createApp({
     authService,
     saveRepo,
-    storageState: { dataDir: config.dataDir }
+    storageState: { dataDir: config.dataDir, trustProxy: config.trustProxy }
   });
 
   app.listen(config.port, () => {
