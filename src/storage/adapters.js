@@ -47,6 +47,23 @@ const ensureJson = async (response) => {
   return data;
 };
 
+const decodeBase64ToBytes = (base64String) => {
+  const binary = atob(base64String);
+  const out = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    out[index] = binary.charCodeAt(index);
+  }
+  return out;
+};
+
+const encodeBytesToBase64 = (bytes) => {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary);
+};
+
 export class ServerApiAdapter extends StorageAdapter {
   constructor({ serverUrl, accessToken }) {
     super();
@@ -164,9 +181,62 @@ export class ServerApiAdapter extends StorageAdapter {
   }
 }
 
-export class CloudflareR2Adapter extends StorageAdapter {
-  async uploadEncryptedFile(_payload) {
-    throw new Error("R2 adapter is planned for phase 2.");
+export class CloudflareR2Adapter extends ServerApiAdapter {
+  async uploadEncryptedFile(payload) {
+    const encryptedBytes = decodeBase64ToBytes(payload.encryptedBase64);
+    const descriptorResponse = await fetch(`${this.serverUrl}/api/v1/saves/presign-upload`, {
+      method: "POST",
+      headers: this.authHeaders(),
+      body: JSON.stringify({
+        filename: payload.name,
+        sizeBytes: encryptedBytes.length,
+        contentType: payload.mimeType ?? "application/x-encrypted-tab-session",
+        ciphertextMeta: payload.ciphertextMeta ?? {}
+      })
+    });
+    const descriptorData = await ensureJson(descriptorResponse);
+
+    try {
+      const uploadResponse = await fetch(descriptorData.upload.url, {
+        method: descriptorData.upload.method || "PUT",
+        headers: descriptorData.upload.headers ?? {},
+        body: encryptedBytes
+      });
+      if (!uploadResponse.ok) {
+        throw new Error(`R2 upload failed with ${uploadResponse.status}`);
+      }
+      return descriptorData.save;
+    } catch (error) {
+      await this.deleteEncryptedFile({ id: descriptorData?.save?.id }).catch(() => {});
+      throw error;
+    }
+  }
+
+  async downloadEncryptedFile(reference) {
+    if ((reference.backend ?? "disk") !== "r2") {
+      return super.downloadEncryptedFile(reference);
+    }
+
+    const descriptorResponse = await fetch(
+      `${this.serverUrl}/api/v1/saves/${encodeURIComponent(reference.id)}/presign-download`,
+      {
+        method: "POST",
+        headers: this.authHeaders()
+      }
+    );
+    const descriptorData = await ensureJson(descriptorResponse);
+    const downloadResponse = await fetch(descriptorData.download.url, {
+      method: descriptorData.download.method || "GET",
+      headers: descriptorData.download.headers ?? {}
+    });
+    if (!downloadResponse.ok) {
+      throw new Error(`R2 download failed with ${downloadResponse.status}`);
+    }
+    const bytes = new Uint8Array(await downloadResponse.arrayBuffer());
+    return {
+      save: descriptorData.save,
+      encryptedBase64: encodeBytesToBase64(bytes)
+    };
   }
 }
 

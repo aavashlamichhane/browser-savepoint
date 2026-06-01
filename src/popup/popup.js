@@ -354,7 +354,8 @@ const runExport = async () =>
 
       if (response.storedToServer) {
         updateOfflineBanner(false);
-        showStatus(`Saved to server as ${response.save.filename}.`, "success");
+        const backendLabel = response.backend === "r2" ? "Cloudflare R2" : "server disk";
+        showStatus(`Saved to ${backendLabel} as ${response.save.filename}.`, "success");
       } else {
         await downloadEncryptedFile(response);
         showStatus(
@@ -452,7 +453,8 @@ const renderSaveList = (saves) => {
 
     const meta = document.createElement("div");
     meta.className = "save-meta";
-    meta.textContent = `${sizeKb} KB · ${createdAt}`;
+    const backendLabel = save.backend === "r2" ? "Cloudflare R2" : "Server disk";
+    meta.textContent = `${sizeKb} KB · ${createdAt} · ${backendLabel}`;
     item.appendChild(meta);
 
     const actions = document.createElement("div");
@@ -469,6 +471,7 @@ const renderSaveList = (saves) => {
           let response = await callBackground({
             type: "IMPORT_REMOTE_SAVE",
             id: save.id,
+            backend: save.backend,
             password,
             confirmLargeImport: false
           });
@@ -480,6 +483,7 @@ const renderSaveList = (saves) => {
               response = await callBackground({
                 type: "IMPORT_REMOTE_SAVE",
                 id: save.id,
+                backend: save.backend,
                 password,
                 confirmLargeImport: true
               });
@@ -508,7 +512,8 @@ const renderSaveList = (saves) => {
           }
           const response = await callBackground({
             type: "DELETE_REMOTE_SAVE",
-            id: save.id
+            id: save.id,
+            backend: save.backend
           });
           if (!response?.ok) {
             throw new Error(response?.message ?? "Delete failed.");
@@ -532,7 +537,7 @@ const refreshServerSaves = async () => {
   const response = await callBackground({ type: "LIST_REMOTE_SAVES" });
   if (!response?.ok) {
     updateOfflineBanner(true, response?.message);
-    throw new Error(response?.message ?? "Could not load server saves.");
+    throw new Error(response?.message ?? "Could not load remote saves.");
   }
   updateOfflineBanner(false);
   renderSaveList(response.saves);
@@ -581,7 +586,7 @@ els.refreshSavesBtn.addEventListener("click", async () => {
     clearStatus();
     try {
       await refreshServerSaves();
-      showStatus("Server backups refreshed.", "success");
+      showStatus("Remote backups refreshed.", "success");
     } catch (error) {
       showStatus(error.message, "error");
     }

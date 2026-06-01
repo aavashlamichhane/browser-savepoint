@@ -54,7 +54,7 @@
               <button type="button" class="btn secondary route-link" data-route="import">Go to Import</button>
             </div>
             <div class="actions">
-              <button type="button" class="btn secondary route-link" data-route="saves">Browse Server Saves</button>
+              <button type="button" class="btn secondary route-link" data-route="saves">Browse Remote Saves</button>
             </div>
           </article>
         </section>
@@ -71,6 +71,7 @@
               <label for="exportTarget">Export target</label>
               <select id="exportTarget">
                 <option value="server">Server storage</option>
+                <option value="r2">Cloudflare R2 (via server signer)</option>
                 <option value="local">Local file (.bsave)</option>
               </select>
             </div>
@@ -110,10 +111,10 @@
 
         <section class="page" data-page="saves">
           <article class="card">
-            <h2>Server Saves</h2>
-            <p class="helper">Restore or delete encrypted backups from your server.</p>
+            <h2>Remote Saves</h2>
+            <p class="helper">Restore or delete encrypted backups from server disk or Cloudflare R2.</p>
             <div class="actions">
-              <button id="refreshSavesBtn" type="button" class="btn secondary">Refresh Server Saves</button>
+              <button id="refreshSavesBtn" type="button" class="btn secondary">Refresh Remote Saves</button>
             </div>
             <ul id="saveList" class="save-list"></ul>
           </article>

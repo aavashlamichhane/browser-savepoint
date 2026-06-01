@@ -112,6 +112,7 @@ No bundler is required.
 3. Enter master password and click **Setup / Login**.
 4. Export with target:
    - `Server storage` for online save,
+   - `Cloudflare R2 (via server signer)` for cloud save,
    - `Local file (.bsave)` for fallback/manual backups.
 5. Restore either:
    - from `Server Browser` list, or
@@ -119,6 +120,21 @@ No bundler is required.
 6. Use **Lock** to clear in-memory session keys/tokens.
 
 If server is unavailable, use local mode until the health check succeeds again.
+
+## Cloudflare R2 setup (optional)
+
+R2 integration keeps zero-knowledge behavior: the extension uploads encrypted `.bsave` bytes only.
+
+1. Create an R2 bucket.
+2. Create an R2 API token with scoped access to that bucket (`Object Read` + `Object Write`).
+3. Set server environment variables:
+   - `R2_ACCOUNT_ID`
+   - `R2_ACCESS_KEY_ID`
+   - `R2_SECRET_ACCESS_KEY`
+   - `R2_BUCKET`
+   - optional `R2_ENDPOINT`, `R2_SIGNED_URL_TTL_SEC`, `R2_MAX_UPLOAD_BYTES`
+4. Restart server and confirm `GET /api/v1/health` returns `"r2Configured": true`.
+5. In extension export page, choose `Cloudflare R2 (via server signer)`.
 
 ## Testing
 

@@ -5,6 +5,14 @@ import { requireAuth } from "./middleware/auth.js";
 import { rateLimit } from "./middleware/rate-limit.js";
 
 const isBase64 = (value) => typeof value === "string" && /^[A-Za-z0-9+/=]+$/.test(value);
+const FILE_MIME = "application/x-encrypted-tab-session";
+const MAX_FILENAME_LENGTH = 160;
+
+const isValidSaveFilename = (value) =>
+  typeof value === "string" &&
+  value.length > 0 &&
+  value.length <= MAX_FILENAME_LENGTH &&
+  value.toLowerCase().endsWith(".bsave");
 
 export const createApp = ({ authService, saveRepo, storageState }) => {
   const app = express();
@@ -18,7 +26,12 @@ export const createApp = ({ authService, saveRepo, storageState }) => {
   app.use(rateLimit());
 
   app.get("/api/v1/health", (_req, res) => {
-    res.json({ ok: true, status: "healthy", storage: storageState.dataDir });
+    res.json({
+      ok: true,
+      status: "healthy",
+      storage: storageState.dataDir,
+      r2Configured: Boolean(storageState.r2Configured)
+    });
   });
 
   app.get("/api/v1/auth/config", (_req, res) => {
@@ -72,10 +85,11 @@ export const createApp = ({ authService, saveRepo, storageState }) => {
     res.status(200).json(out);
   });
 
-  app.get("/api/v1/saves", requireAuth(authService), (_req, res) => {
-    const saves = saveRepo.listSaves().map((item) => ({
+  app.get("/api/v1/saves", requireAuth(authService), async (_req, res) => {
+    const saves = (await saveRepo.listSaves()).map((item) => ({
       id: item.id,
       filename: item.filename,
+      backend: item.backend ?? "disk",
       sizeBytes: item.sizeBytes,
       createdAt: item.createdAt,
       ciphertextMeta: item.ciphertextMeta ?? {}
@@ -85,11 +99,7 @@ export const createApp = ({ authService, saveRepo, storageState }) => {
 
   app.post("/api/v1/saves", requireAuth(authService), async (req, res) => {
     const { filename, encryptedBase64, ciphertextMeta } = req.body ?? {};
-    if (
-      typeof filename !== "string" ||
-      !filename.toLowerCase().endsWith(".bsave") ||
-      !isBase64(encryptedBase64)
-    ) {
+    if (!isValidSaveFilename(filename) || !isBase64(encryptedBase64)) {
       res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Invalid save payload." });
       return;
     }
@@ -100,14 +110,66 @@ export const createApp = ({ authService, saveRepo, storageState }) => {
       save: {
         id: save.id,
         filename: save.filename,
+        backend: save.backend ?? "disk",
         sizeBytes: save.sizeBytes,
         createdAt: save.createdAt
       }
     });
   });
 
+  app.post("/api/v1/saves/presign-upload", requireAuth(authService), async (req, res) => {
+    const { filename, sizeBytes, ciphertextMeta, contentType } = req.body ?? {};
+    if (!isValidSaveFilename(filename) || !Number.isInteger(sizeBytes) || sizeBytes <= 0) {
+      res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Invalid presign payload." });
+      return;
+    }
+    if (contentType != null && contentType !== FILE_MIME) {
+      res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Unsupported content type." });
+      return;
+    }
+    try {
+      const { save, upload } = await saveRepo.createR2SaveAndGetUploadDescriptor({
+        filename,
+        sizeBytes,
+        ciphertextMeta,
+        contentType: contentType || FILE_MIME
+      });
+      res.status(201).json({
+        ok: true,
+        save: {
+          id: save.id,
+          filename: save.filename,
+          backend: save.backend,
+          sizeBytes: save.sizeBytes,
+          createdAt: save.createdAt
+        },
+        upload
+      });
+    } catch (error) {
+      const statusCode = error?.code === "R2_NOT_CONFIGURED" ? 400 : error?.code === "VALIDATION_ERROR" ? 400 : 500;
+      res.status(statusCode).json({
+        ok: false,
+        code: error?.code ?? "SERVER_ERROR",
+        message: error?.message ?? "Could not prepare R2 upload."
+      });
+    }
+  });
+
   app.get("/api/v1/saves/:id", requireAuth(authService), async (req, res) => {
-    const out = await saveRepo.getSaveBlobBase64(req.params.id);
+    let out = null;
+    try {
+      out = await saveRepo.getSaveBlobBase64(req.params.id);
+    } catch (error) {
+      if (error?.code === "UNSUPPORTED_BACKEND") {
+        res.status(409).json({
+          ok: false,
+          code: "UNSUPPORTED_BACKEND",
+          message: "Use presigned download for cloud-backed save."
+        });
+        return;
+      }
+      throw error;
+    }
     if (!out) {
       res.status(404).json({ ok: false, code: "NOT_FOUND", message: "Save not found." });
       return;
@@ -117,11 +179,48 @@ export const createApp = ({ authService, saveRepo, storageState }) => {
       save: {
         id: out.save.id,
         filename: out.save.filename,
+        backend: out.save.backend ?? "disk",
         sizeBytes: out.save.sizeBytes,
         createdAt: out.save.createdAt
       },
       encryptedBase64: out.encryptedBase64
     });
+  });
+
+  app.post("/api/v1/saves/:id/presign-download", requireAuth(authService), async (req, res) => {
+    try {
+      const out = await saveRepo.getSaveDownloadDescriptor(req.params.id);
+      if (!out) {
+        res.status(404).json({ ok: false, code: "NOT_FOUND", message: "Save not found." });
+        return;
+      }
+      res.json({
+        ok: true,
+        save: {
+          id: out.save.id,
+          filename: out.save.filename,
+          backend: out.save.backend ?? "r2",
+          sizeBytes: out.save.sizeBytes,
+          createdAt: out.save.createdAt
+        },
+        download: out.download
+      });
+    } catch (error) {
+      if (error?.code === "UNSUPPORTED_BACKEND") {
+        res.status(409).json({
+          ok: false,
+          code: "UNSUPPORTED_BACKEND",
+          message: "Save is not stored in cloud backend."
+        });
+        return;
+      }
+      const statusCode = error?.code === "R2_NOT_CONFIGURED" ? 400 : 500;
+      res.status(statusCode).json({
+        ok: false,
+        code: error?.code ?? "SERVER_ERROR",
+        message: error?.message ?? "Could not create download descriptor."
+      });
+    }
   });
 
   app.delete("/api/v1/saves/:id", requireAuth(authService), async (req, res) => {

@@ -9,7 +9,7 @@ import {
 import { FILE_EXTENSION } from "../session/schema.js";
 import { decodePayload, encodePayload, createSessionPayload } from "../session/serializer.js";
 import { openTabsInCurrentWindow, prepareImportPlan } from "../session/importer.js";
-import { ServerApiAdapter } from "../storage/adapters.js";
+import { CloudflareR2Adapter, ServerApiAdapter } from "../storage/adapters.js";
 
 const SETTINGS_KEY = "appSettings";
 const DEFAULT_SERVER_URL = "http://localhost:8787";
@@ -92,6 +92,12 @@ const getServerAdapter = () => new ServerApiAdapter({ serverUrl: settings.server
 
 const getAuthedServerAdapter = () =>
   new ServerApiAdapter({
+    serverUrl: settings.serverUrl,
+    accessToken: session.accessToken
+  });
+
+const getAuthedR2Adapter = () =>
+  new CloudflareR2Adapter({
     serverUrl: settings.serverUrl,
     accessToken: session.accessToken
   });
@@ -180,6 +186,41 @@ const handleExport = async (message) => {
         ok: false,
         code: "SERVER_UNAVAILABLE",
         message: "Could not store to server. Switch to local fallback or reconnect."
+      };
+    }
+  }
+
+  if (message.target === "r2") {
+    if (!session.accessToken || !session.onlineReady) {
+      return {
+        ok: false,
+        code: "SERVER_UNAVAILABLE",
+        message: "Cloud export requires a logged-in reachable server."
+      };
+    }
+    try {
+      const save = await withServerAuth(() =>
+        getAuthedR2Adapter().uploadEncryptedFile({
+          name: exportPayload.filename,
+          encryptedBase64: exportPayload.encryptedBase64,
+          mimeType: "application/x-encrypted-tab-session",
+          ciphertextMeta: {
+            tabCount: exportPayload.tabCount
+          }
+        })
+      );
+      return {
+        ok: true,
+        storedToServer: true,
+        backend: "r2",
+        save
+      };
+    } catch (error) {
+      markServerOffline(error);
+      return {
+        ok: false,
+        code: "SERVER_UNAVAILABLE",
+        message: "Could not store to Cloudflare R2. Verify server R2 config."
       };
     }
   }
@@ -324,7 +365,9 @@ const handleImportRemoteSave = async (message) => {
   }
 
   try {
-    const fetched = await withServerAuth((adapter) => adapter.downloadEncryptedFile({ id: message.id }));
+    const fetched = await withServerAuth(() =>
+      getAuthedR2Adapter().downloadEncryptedFile({ id: message.id, backend: message.backend })
+    );
     return handleImport({
       encryptedBase64: fetched.encryptedBase64,
       password: activePassword,

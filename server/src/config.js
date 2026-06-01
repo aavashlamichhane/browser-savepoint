@@ -9,5 +9,15 @@ export const config = {
   accessTokenTtlSec: Number(process.env.SAVEPOINT_ACCESS_TTL_SEC ?? 900),
   refreshTokenTtlSec: Number(process.env.SAVEPOINT_REFRESH_TTL_SEC ?? 60 * 60 * 24 * 30),
   trustedRecoverySecret: process.env.SAVEPOINT_TRUSTED_RECOVERY_SECRET ?? "",
-  trustedRecoveryDefault: (process.env.SAVEPOINT_TRUSTED_RECOVERY_DEFAULT ?? "false") === "true"
+  trustedRecoveryDefault: (process.env.SAVEPOINT_TRUSTED_RECOVERY_DEFAULT ?? "false") === "true",
+  r2: {
+    accountId: process.env.R2_ACCOUNT_ID ?? "",
+    accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+    bucket: process.env.R2_BUCKET ?? "",
+    endpoint: process.env.R2_ENDPOINT ?? "",
+    publicBaseUrl: process.env.R2_PUBLIC_BASE_URL ?? "",
+    signedUrlTtlSec: Number(process.env.R2_SIGNED_URL_TTL_SEC ?? 900),
+    maxUploadBytes: Number(process.env.R2_MAX_UPLOAD_BYTES ?? 20 * 1024 * 1024)
+  }
 };

@@ -21,6 +21,14 @@ Server starts at `http://localhost:8787` by default.
 - `SAVEPOINT_REFRESH_TTL_SEC` (default `2592000`)
 - `SAVEPOINT_TRUSTED_RECOVERY_SECRET` (optional, for future trusted recovery mode)
 - `SAVEPOINT_TRUSTED_RECOVERY_DEFAULT` (default `false`)
+- `R2_ACCOUNT_ID` (required for R2)
+- `R2_ACCESS_KEY_ID` (required for R2)
+- `R2_SECRET_ACCESS_KEY` (required for R2)
+- `R2_BUCKET` (required for R2)
+- `R2_ENDPOINT` (optional override; default derived from account id)
+- `R2_PUBLIC_BASE_URL` (optional)
+- `R2_SIGNED_URL_TTL_SEC` (default `900`)
+- `R2_MAX_UPLOAD_BYTES` (default `20971520`)
 
 ## Data at rest
 
@@ -28,6 +36,12 @@ Server starts at `http://localhost:8787` by default.
 - `blobs/*.bsave` stores encrypted backup blobs.
 
 The server cannot decrypt tab sessions in default mode.
+
+## Cloudflare R2 backend
+
+- The server mints short-lived signed PUT/GET URLs for extension upload/download.
+- The extension never stores or receives R2 API secrets.
+- If R2 env vars are missing, disk-backed saves continue to work and R2 routes return configuration errors.
 
 ## API
 
