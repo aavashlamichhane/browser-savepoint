@@ -36,9 +36,9 @@ const getExportableCurrentWindowTabs = async () => {
   };
 };
 
-const buildDefaultFilename = () => {
+const buildTimestamp = () => {
   const now = new Date();
-  const stamp = [
+  return [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, "0"),
     String(now.getDate()).padStart(2, "0"),
@@ -47,8 +47,13 @@ const buildDefaultFilename = () => {
     String(now.getMinutes()).padStart(2, "0"),
     String(now.getSeconds()).padStart(2, "0")
   ].join("");
+};
 
-  return `tab-session-${stamp}${FILE_EXTENSION}`;
+const buildExportFilename = (rawName) => {
+  const timestamp = buildTimestamp();
+  const base = (rawName ?? "").trim().replace(/\.bsave$/i, "");
+  const safeBase = base || "tab-session";
+  return `${safeBase}-${timestamp}${FILE_EXTENSION}`;
 };
 
 const handleExport = async (message) => {
@@ -67,7 +72,7 @@ const handleExport = async (message) => {
   return {
     ok: true,
     encryptedBase64: encodeBytesToBase64(encryptedBytes),
-    filename: message.filename?.trim() || buildDefaultFilename(),
+    filename: buildExportFilename(message.filename),
     tabCount: payload.tabs.length,
     skippedCount
   };
