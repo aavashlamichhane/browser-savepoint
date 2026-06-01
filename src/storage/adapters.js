@@ -35,12 +35,143 @@ export class LocalDownloadAdapter extends StorageAdapter {
   }
 }
 
-/**
- * Placeholder for v2:
- * - GoogleDriveAdapter will encapsulate OAuth and Drive API calls.
- * - CloudflareR2Adapter will use a backend-issued presigned URL flow.
- */
-export const cloudAdapters = {
-  GoogleDriveAdapter: null,
-  CloudflareR2Adapter: null
+const ensureJson = async (response) => {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) {
+    const message = data?.message ?? `Request failed with ${response.status}`;
+    const code = data?.code ?? "SERVER_ERROR";
+    const error = new Error(message);
+    error.code = code;
+    throw error;
+  }
+  return data;
 };
+
+export class ServerApiAdapter extends StorageAdapter {
+  constructor({ serverUrl, accessToken }) {
+    super();
+    this.serverUrl = (serverUrl ?? "").replace(/\/$/, "");
+    this.accessToken = accessToken;
+  }
+
+  withSession(accessToken) {
+    return new ServerApiAdapter({
+      serverUrl: this.serverUrl,
+      accessToken
+    });
+  }
+
+  authHeaders() {
+    if (!this.accessToken) {
+      throw new Error("No access token for server adapter.");
+    }
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.accessToken}`
+    };
+  }
+
+  async health() {
+    const response = await fetch(`${this.serverUrl}/api/v1/health`);
+    return ensureJson(response);
+  }
+
+  async getAuthConfig() {
+    const response = await fetch(`${this.serverUrl}/api/v1/auth/config`);
+    return ensureJson(response);
+  }
+
+  async setupAuth(payload) {
+    const response = await fetch(`${this.serverUrl}/api/v1/auth/setup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    return ensureJson(response);
+  }
+
+  async login(authVerifierB64) {
+    const response = await fetch(`${this.serverUrl}/api/v1/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ authVerifierB64 })
+    });
+    return ensureJson(response);
+  }
+
+  async refresh(refreshToken) {
+    const response = await fetch(`${this.serverUrl}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ refreshToken })
+    });
+    return ensureJson(response);
+  }
+
+  async logout(refreshToken) {
+    const response = await fetch(`${this.serverUrl}/api/v1/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ refreshToken })
+    });
+    return ensureJson(response);
+  }
+
+  async uploadEncryptedFile(payload) {
+    const response = await fetch(`${this.serverUrl}/api/v1/saves`, {
+      method: "POST",
+      headers: this.authHeaders(),
+      body: JSON.stringify({
+        filename: payload.name,
+        encryptedBase64: payload.encryptedBase64,
+        ciphertextMeta: payload.ciphertextMeta ?? {}
+      })
+    });
+    const data = await ensureJson(response);
+    return data.save;
+  }
+
+  async listEncryptedFiles() {
+    const response = await fetch(`${this.serverUrl}/api/v1/saves`, {
+      headers: this.authHeaders()
+    });
+    const data = await ensureJson(response);
+    return data.saves;
+  }
+
+  async downloadEncryptedFile(reference) {
+    const response = await fetch(`${this.serverUrl}/api/v1/saves/${encodeURIComponent(reference.id)}`, {
+      headers: this.authHeaders()
+    });
+    const data = await ensureJson(response);
+    return data;
+  }
+
+  async deleteEncryptedFile(reference) {
+    const response = await fetch(`${this.serverUrl}/api/v1/saves/${encodeURIComponent(reference.id)}`, {
+      method: "DELETE",
+      headers: this.authHeaders()
+    });
+    return ensureJson(response);
+  }
+}
+
+export class CloudflareR2Adapter extends StorageAdapter {
+  async uploadEncryptedFile(_payload) {
+    throw new Error("R2 adapter is planned for phase 2.");
+  }
+}
+
+export class GoogleDriveAdapter extends StorageAdapter {
+  async uploadEncryptedFile(_payload) {
+    throw new Error("Google Drive adapter is planned for phase 3.");
+  }
+}

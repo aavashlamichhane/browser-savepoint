@@ -4,6 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "server:start": "node server/src/index.js"
+  },
+  "description": "Browser extension to export and import encrypted tab sessions. It is designed for normal and private/incognito workflows (when private access is enabled in browser extension settings).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "helmet": "^8.2.0"
   }
 }

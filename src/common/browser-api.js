@@ -39,5 +39,10 @@ export const extApi = {
   },
   downloads: {
     download: (options) => callApi(rawApi.downloads.download, rawApi.downloads, options)
+  },
+  storage: {
+    localGet: (keys) => callApi(rawApi.storage.local.get, rawApi.storage.local, keys),
+    localSet: (items) => callApi(rawApi.storage.local.set, rawApi.storage.local, items),
+    localRemove: (keys) => callApi(rawApi.storage.local.remove, rawApi.storage.local, keys)
   }
 };
