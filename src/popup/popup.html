@@ -7,85 +7,136 @@
     <link rel="stylesheet" href="./popup.css" />
   </head>
   <body>
-    <main class="container">
-      <h1>Encrypted Savepoint</h1>
-      <p class="subtitle">Server-backed encrypted backups with local fallback.</p>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="title-wrap">
+          <h1>Encrypted Savepoint</h1>
+          <p class="subtitle">Encrypted tab backups with secure restore.</p>
+        </div>
+        <div class="status-badges">
+          <span id="lockBadge" class="badge muted">Locked</span>
+          <span id="serverBadge" class="badge muted">Offline</span>
+        </div>
+      </header>
 
-      <section id="incognitoWarning" class="alert warning hidden"></section>
-      <section id="offlineBanner" class="alert warning hidden"></section>
-      <section id="status" class="alert hidden"></section>
+      <section id="incognitoWarning" class="banner warning hidden"></section>
+      <section id="offlineBanner" class="banner warning hidden"></section>
+      <section id="status" class="banner hidden"></section>
 
-      <section class="panel">
-        <h2>Server Settings</h2>
-        <div class="field">
-          <label for="serverUrl">Server URL</label>
-          <input id="serverUrl" type="text" placeholder="http://localhost:8787" />
-        </div>
-        <div class="row">
-          <label for="preferServerMode">Prefer server mode</label>
-          <input id="preferServerMode" type="checkbox" checked />
-        </div>
-        <div class="actions split">
-          <button id="saveSettingsBtn" type="button">Save Settings</button>
-          <button id="checkHealthBtn" type="button">Check Server</button>
-        </div>
-      </section>
+      <nav class="tabs" aria-label="Popup pages">
+        <button type="button" class="tab-btn active" data-route="home">Home</button>
+        <button type="button" class="tab-btn" data-route="export">Export</button>
+        <button type="button" class="tab-btn" data-route="import">Import</button>
+        <button type="button" class="tab-btn" data-route="saves">Saves</button>
+        <button type="button" class="tab-btn" data-route="settings">Settings</button>
+      </nav>
 
-      <section class="panel">
-        <h2>Unlock</h2>
-        <div class="field">
-          <label for="password">Master password (min 8 chars)</label>
-          <input id="password" type="password" minlength="8" autocomplete="off" />
-        </div>
-        <div class="actions split">
-          <button id="setupLoginBtn" type="button">Setup / Login</button>
-          <button id="lockBtn" type="button" class="muted">Lock</button>
-        </div>
-      </section>
+      <section class="page-scroll">
+        <section class="page active" data-page="home">
+          <article class="card">
+            <h2>Unlock Session</h2>
+            <p class="helper">Enter your master password to unlock encryption features.</p>
+            <div class="field">
+              <label for="password">Master password (min 8 chars)</label>
+              <input id="password" type="password" minlength="8" autocomplete="off" />
+              <p id="passwordError" class="field-error hidden"></p>
+            </div>
+            <div class="actions split">
+              <button id="setupLoginBtn" type="button" class="btn primary">Setup / Login</button>
+              <button id="lockBtn" type="button" class="btn secondary">Lock</button>
+            </div>
+          </article>
 
-      <section class="panel">
-        <h2>Export</h2>
-        <div class="field">
-          <label for="filename">Export filename base (date auto-added)</label>
-          <input id="filename" type="text" placeholder="tab-session" />
-        </div>
-        <div class="field">
-          <label for="exportTarget">Export target</label>
-          <select id="exportTarget">
-            <option value="server">Server storage</option>
-            <option value="local">Local file (.bsave)</option>
-          </select>
-        </div>
-        <div class="actions">
-          <button id="exportBtn" type="button">Export Current Window</button>
-        </div>
-      </section>
+          <article class="card">
+            <h2>Quick Actions</h2>
+            <div class="actions split">
+              <button type="button" class="btn secondary route-link" data-route="export">Go to Export</button>
+              <button type="button" class="btn secondary route-link" data-route="import">Go to Import</button>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn secondary route-link" data-route="saves">Browse Server Saves</button>
+            </div>
+          </article>
+        </section>
 
-      <section class="panel">
-        <h2>Local Import</h2>
-        <div class="row">
-          <label for="useMasterForLocalImport">Use master password for local import</label>
-          <input id="useMasterForLocalImport" type="checkbox" checked />
-        </div>
-        <div class="field">
-          <label for="localImportPassword">Import password (for selected file)</label>
-          <input id="localImportPassword" type="password" minlength="8" autocomplete="off" />
-        </div>
-        <div class="field">
-          <label for="importFile">Import encrypted session file</label>
-          <input id="importFile" type="file" accept=".bsave,application/x-encrypted-tab-session" />
-        </div>
-        <div class="actions">
-          <button id="importBtn" type="button">Import Into Current Window</button>
-        </div>
-      </section>
+        <section class="page" data-page="export">
+          <article class="card">
+            <h2>Export Current Window</h2>
+            <p class="helper">Save encrypted tabs to your server or local `.bsave` file.</p>
+            <div class="field">
+              <label for="filename">Export filename base (date auto-added)</label>
+              <input id="filename" type="text" placeholder="tab-session" />
+            </div>
+            <div class="field">
+              <label for="exportTarget">Export target</label>
+              <select id="exportTarget">
+                <option value="server">Server storage</option>
+                <option value="local">Local file (.bsave)</option>
+              </select>
+            </div>
+            <div class="actions">
+              <button id="exportBtn" type="button" class="btn primary">Export Current Window</button>
+            </div>
+          </article>
+        </section>
 
-      <section class="panel">
-        <h2>Server Browser</h2>
-        <div class="actions">
-          <button id="refreshSavesBtn" type="button">Refresh Server Saves</button>
-        </div>
-        <ul id="saveList" class="save-list"></ul>
+        <section class="page" data-page="import">
+          <article class="card">
+            <h2>Local Import</h2>
+            <ol class="steps">
+              <li>Select encrypted file</li>
+              <li>Provide password</li>
+              <li>Review large import prompt if shown</li>
+            </ol>
+            <div class="toggle-row">
+              <label for="useMasterForLocalImport">Use master password for local import</label>
+              <input id="useMasterForLocalImport" type="checkbox" checked />
+            </div>
+            <div class="field">
+              <label for="localImportPassword">Import password (for selected file)</label>
+              <input id="localImportPassword" type="password" minlength="8" autocomplete="off" />
+              <p id="localImportPasswordError" class="field-error hidden"></p>
+            </div>
+            <div class="field">
+              <label for="importFile">Import encrypted session file</label>
+              <input id="importFile" type="file" accept=".bsave,application/x-encrypted-tab-session" />
+              <p id="importFileError" class="field-error hidden"></p>
+            </div>
+            <div class="actions">
+              <button id="importBtn" type="button" class="btn primary">Import Into Current Window</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="page" data-page="saves">
+          <article class="card">
+            <h2>Server Saves</h2>
+            <p class="helper">Restore or delete encrypted backups from your server.</p>
+            <div class="actions">
+              <button id="refreshSavesBtn" type="button" class="btn secondary">Refresh Server Saves</button>
+            </div>
+            <ul id="saveList" class="save-list"></ul>
+          </article>
+        </section>
+
+        <section class="page" data-page="settings">
+          <article class="card">
+            <h2>Server Settings</h2>
+            <div class="field">
+              <label for="serverUrl">Server URL</label>
+              <input id="serverUrl" type="text" placeholder="http://localhost:8787" />
+              <p id="serverUrlError" class="field-error hidden"></p>
+            </div>
+            <div class="toggle-row">
+              <label for="preferServerMode">Prefer server mode</label>
+              <input id="preferServerMode" type="checkbox" checked />
+            </div>
+            <div class="actions split">
+              <button id="saveSettingsBtn" type="button" class="btn primary">Save Settings</button>
+              <button id="checkHealthBtn" type="button" class="btn secondary">Check Server</button>
+            </div>
+          </article>
+        </section>
       </section>
     </main>
     <script type="module" src="./popup.js"></script>
