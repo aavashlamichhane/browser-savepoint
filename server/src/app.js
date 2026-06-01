@@ -22,6 +22,11 @@ export const createApp = ({ authService, saveRepo, storageState }) => {
 
   app.use(helmet());
   app.use(cors({ origin: true }));
+  app.use((_req, res, next) => {
+    // Allow private-network fetches from extension origins (192.168.x.x home servers).
+    res.setHeader("Access-Control-Allow-Private-Network", "true");
+    next();
+  });
   app.use(express.json({ limit: "20mb" }));
   app.use(rateLimit());
 
