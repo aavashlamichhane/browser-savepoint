@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Encrypted Tab Session Savepoint",
+  "description": "Export and import encrypted tab sessions, including private/incognito windows when allowed.",
+  "version": "1.0.0",
+  "permissions": [
+    "tabs",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background/index.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Encrypted Savepoint",
+    "default_popup": "src/popup/popup.html"
+  },
+  "incognito": "spanning",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "encrypted-savepoint@local",
+      "strict_min_version": "109.0"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Encrypted Savepoint</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Encrypted Savepoint</h1>
+      <p class="subtitle">Export and restore tab sessions with password encryption.</p>
+
+      <section id="incognitoWarning" class="alert warning hidden"></section>
+      <section id="status" class="alert hidden"></section>
+
+      <div class="field">
+        <label for="password">Password (min 8 chars)</label>
+        <input id="password" type="password" minlength="8" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="filename">Export filename (optional)</label>
+        <input id="filename" type="text" placeholder="tab-session.bsave" />
+      </div>
+
+      <div class="actions">
+        <button id="exportBtn" type="button">Export Current Window</button>
+      </div>
+
+      <hr />
+
+      <div class="field">
+        <label for="importFile">Import encrypted session file</label>
+        <input id="importFile" type="file" accept=".bsave,application/x-encrypted-tab-session" />
+      </div>
+
+      <div class="actions">
+        <button id="importBtn" type="button">Import Into Current Window</button>
+      </div>
+    </main>
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>
