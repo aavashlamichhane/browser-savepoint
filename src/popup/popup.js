@@ -70,9 +70,28 @@ const ensurePassword = () => {
 
 const downloadEncryptedFile = async ({ encryptedBase64, filename }) => {
   const bytes = bytesFromBase64(encryptedBase64);
+
+  if (typeof window.showSaveFilePicker === "function") {
+    const fileHandle = await window.showSaveFilePicker({
+      suggestedName: filename,
+      types: [
+        {
+          description: "Encrypted Tab Session",
+          accept: {
+            "application/x-encrypted-tab-session": [".bsave"]
+          }
+        }
+      ]
+    });
+
+    const writable = await fileHandle.createWritable();
+    await writable.write(bytes);
+    await writable.close();
+    return;
+  }
+
   const blob = new Blob([bytes], { type: "application/x-encrypted-tab-session" });
   const blobUrl = URL.createObjectURL(blob);
-
   try {
     await extApi.downloads.download({
       url: blobUrl,
