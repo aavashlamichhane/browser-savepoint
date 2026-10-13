@@ -1,4 +1,7 @@
 node_modules/
 server/data/
 *.log
-.env.docker
+.env
+.env.*
+!.env.example
+!.env.*.example

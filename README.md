@@ -157,3 +157,7 @@ Encrypted files include a versioned container header. Future versions should:
 - Trusted recovery mode UX and secure setup hardening.
 
 Encryption remains local-first in all phases: only ciphertext leaves the extension.
+
+## License
+
+Licensed under the [ISC License](LICENSE).
